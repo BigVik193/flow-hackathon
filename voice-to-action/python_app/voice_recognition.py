@@ -4,7 +4,7 @@ Speech Recognition Module
 
 Handles real-time wake word detection and speech recognition using:
 - Gladia for continuous real-time speech transcription and wake word detection
-- Wake words: "Hey Flow" (commands) and "Scribe Write" (dictation)
+- Wake words: "Hey Flow" (commands) and "Orange" (dictation)
 
 Author: AI Assistant
 """
@@ -35,7 +35,7 @@ class SpeechRecognitionThread(QThread):
     
     # Signals to communicate with main thread
     wake_word_detected = Signal(str)  # Command after "Hey Flow"
-    dictation_detected = Signal(str)  # Text after "Scribe Write"
+    dictation_detected = Signal(str)  # Text after "Orange"
     status_changed = Signal(str)  # Status updates
     error_occurred = Signal(str)  # Error messages
     user_speaking = Signal(bool)  # True when user is speaking, False when silent
@@ -47,7 +47,7 @@ class SpeechRecognitionThread(QThread):
         self.gladia_transcriber = None
         self.current_text_buffer = ""
         self.waiting_for_command = False
-        self.waiting_for_dictation = False
+        self.waiting_for_orange = False
         self.wake_word_detected_time = None
         
         # Wake word patterns - more flexible with punctuation
@@ -57,15 +57,30 @@ class SpeechRecognitionThread(QThread):
             r'\bhay[,!]?\s+flow\b',
             r'\bhay[,!]?\s+flo\b',
             r'\bheyflow\b',
-            r'\bhayflo\b'
+            r'\bhayflo\b',
+            r'\bhey[,!]?\s+fluer\b',     # "hey fluer" mishearing
+            r'\bhey[,!]?\s+fleur\b',     # "hey fleur" mishearing
+            r'\bhey[,!]?\s+floor\b',     # "hey floor" mishearing
+            r'\bhe[,!]?\s+flowed\b',     # "he flowed" mishearing
+            r'\bhe[,!]?\s+flow\b',       # "he flow" mishearing
+            r'\bhey[,!]?\s+flew\b',      # "hey flew" mishearing
+            r'\bhey[,!]?\s+flows\b',     # "hey flows" mishearing
+            r'\bhey[,!]?\s+flower\b',    # "hey flower" mishearing
+            r'\bhey[,!]?\s+fluid\b'      # "hey fluid" mishearing
         ]
         
-        self.scribe_patterns = [
-            r'\bscribe[,!]?\s+write\b',
-            r'\bscribe[,!]?\s+right\b',  # Common mishearing
-            r'\bscribe[,!]?\s+type\b',
-            r'\bscribewrite\b',
-            r'\bscribetype\b'
+        self.orange_patterns = [
+            r'\borange[,!]?\s',
+            r'\boranges[,!]?\s',   # Plural form
+            r'\borenge[,!]?\s',    # Common mishearing
+            r'\borange[,!]?$',     # Just "orange" at end of sentence
+            r'\boranj[,!]?\s',     # Common mishearing
+            r'\borang[,!]?\s',     # Without final 'e'
+            r'\baurange[,!]?\s',   # Mishearing initial vowel
+            r'\barange[,!]?\s',    # Mishearing initial vowel
+            r'\burrange[,!]?\s',   # Mishearing initial vowel
+            r'\borrige[,!]?\s',    # Common mishearing
+            r'\boringe[,!]?\s'     # Different middle vowel
         ]
         
     def setup_gladia_transcription(self):
@@ -122,7 +137,7 @@ class SpeechRecognitionThread(QThread):
         self.error_occurred.emit(error)
     
     def check_for_wake_words(self, text: str, is_final: bool = False):
-        """Check text for wake words and extract commands/dictation"""
+        """Check text for wake words and extract commands/orange dictation"""
         text_lower = text.lower()
         
         # Only process wake words on final transcriptions to avoid false positives
@@ -153,10 +168,10 @@ class SpeechRecognitionThread(QThread):
                 return
         
         # Check for Scribe Write wake words
-        for pattern in self.scribe_patterns:
+        for pattern in self.orange_patterns:
             match = re.search(pattern, text_lower)
             if match:
-                print(f"📝 Scribe Write wake word detected: {match.group()}")
+                print(f"🍊 Orange wake word detected: {match.group()}")
                 
                 # Extract dictation after wake word, cleaning up punctuation
                 dictation_start = match.end()
@@ -165,14 +180,14 @@ class SpeechRecognitionThread(QThread):
                 dictation = re.sub(r'^[,!.\s]+', '', dictation).strip()
                 
                 if dictation:
-                    print(f"📝 Dictation: '{dictation}'")
+                    print(f"🍊 Orange dictation: '{dictation}'")
                     self.dictation_detected.emit(dictation)
                 else:
-                    print("⚠️ No dictation found after Scribe Write")
+                    print("⚠️ No text found after Orange")
                     # Set flag to capture next transcription as dictation
                     self.waiting_for_dictation = True
                     self.wake_word_detected_time = time.time()
-                    self.status_changed.emit("Dictation mode - speak your text...")
+                    self.status_changed.emit("Orange dictation mode - speak your text...")
                 return
         
         # If waiting for command/dictation, treat this as the response
@@ -183,18 +198,18 @@ class SpeechRecognitionThread(QThread):
             self.status_changed.emit("Listening for wake words...")
             return
             
-        if self.waiting_for_dictation and text.strip():
-            print(f"📝 Dictation after wake word: '{text}'")
+        if self.waiting_for_orange and text.strip():
+            print(f"🍊 Orange dictation after wake word: '{text}'")
             self.dictation_detected.emit(text.strip())
-            self.waiting_for_dictation = False
+            self.waiting_for_orange = False
             self.status_changed.emit("Listening for wake words...")
             return
         
         # Reset waiting flags after timeout (10 seconds)
-        if (self.waiting_for_command or self.waiting_for_dictation) and self.wake_word_detected_time:
+        if (self.waiting_for_command or self.waiting_for_orange) and self.wake_word_detected_time:
             if time.time() - self.wake_word_detected_time > 10:
                 self.waiting_for_command = False
-                self.waiting_for_dictation = False
+                self.waiting_for_orange = False
                 self.status_changed.emit("Listening for wake words...")
     
     def set_backend_processing(self, processing: bool):

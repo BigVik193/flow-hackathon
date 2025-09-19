@@ -68,7 +68,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Flow")
         
         # Set initial compact window size
-        self.compact_height = 150
+        self.compact_height = 165
         self.expanded_height = 400
         self.window_width = 580
         
@@ -199,8 +199,8 @@ class MainWindow(QMainWindow):
         self.execute_command_with_backend(command)
     
     def handle_dictation(self, text: str):
-        """Handle dictation from Scribe Write wake word"""
-        print(f"📝 Processing dictation: {text}")
+        """Handle dictation from Orange wake word"""
+        print(f"🍊 Processing orange dictation: {text}")
         
         # Insert text at current cursor position using macOS APIs
         self.macos_integration.insert_text_at_cursor(text + " ")

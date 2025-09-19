@@ -66,7 +66,7 @@ class MinimaxTTSService:
                 "output_format": "url",  # Request URL format instead of hex data
                 "voice_setting": {
                     "voice_id": voice_id,
-                    "speed": 1.5,
+                    "speed": 1.4,
                     "vol": 1.0,
                     "pitch": 0
                 },

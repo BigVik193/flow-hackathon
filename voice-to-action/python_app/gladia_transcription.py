@@ -43,10 +43,7 @@ class GladiaTranscription(QObject):
         self.loop = None
         self.transcription_thread = None
         
-        # Speech pause detection
-        self.final_buffer = ""
-        self.final_timer = None
-        self.speech_pause_delay = 1.0  # Wait 1 second after final transcription before processing
+        # Gladia handles endpointing natively via the 'endpointing' parameter
         
     async def create_session(self) -> bool:
         """Create a new Gladia transcription session"""
@@ -66,6 +63,7 @@ class GladiaTranscription(QObject):
                 "sample_rate": SAMPLE_RATE,
                 "bit_depth": 16,
                 "channels": 1,
+                "endpointing": 1.0,  # Wait 1 second of silence before processing (Gladia built-in VAD)
                 "realtime_processing": {
                     "words_accurate_timestamps": True
                 }
@@ -152,10 +150,9 @@ class GladiaTranscription(QObject):
                     
                     if text:
                         if transcript_data.get('is_final', False):
-                            # Final transcription - buffer it and wait for speech pause
-                            print(f"🎤 GLADIA FINAL (buffered): '{text}'")
-                            self.final_buffer = text
-                            self._reset_final_timer()
+                            # Final transcription - Gladia's endpointing handles the delay
+                            print(f"🎤 GLADIA FINAL: '{text}'")
+                            self.transcription_result.emit(text)
                         else:
                             # Partial transcription
                             print(f"🎤 GLADIA PARTIAL: '{text}'")
@@ -297,33 +294,10 @@ class GladiaTranscription(QObject):
         if self.loop and not self.loop.is_closed():
             asyncio.run_coroutine_threadsafe(self.cleanup(), self.loop)
     
-    def _reset_final_timer(self):
-        """Reset the timer for processing final transcription after speech pause"""
-        # Cancel existing timer if any
-        if self.final_timer:
-            self.final_timer.cancel()
-        
-        # Start new timer
-        self.final_timer = threading.Timer(self.speech_pause_delay, self._process_final_transcription)
-        self.final_timer.start()
-        print(f"🕰️ Speech pause timer reset - waiting {self.speech_pause_delay}s for processing")
-    
-    def _process_final_transcription(self):
-        """Process the buffered final transcription after speech pause"""
-        if self.final_buffer:
-            print(f"🎤 GLADIA FINAL (processed after pause): '{self.final_buffer}'")
-            self.transcription_result.emit(self.final_buffer)
-            self.final_buffer = ""
-        self.final_timer = None
-    
     async def cleanup(self):
         """Clean up resources"""
         self.is_recording = False
         
-        # Cancel any pending timer
-        if self.final_timer:
-            self.final_timer.cancel()
-            self.final_timer = None
         
         if self.audio_stream:
             self.audio_stream.stop()

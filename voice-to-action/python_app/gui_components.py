@@ -7,7 +7,7 @@ Modern custom GUI components for the Control Flow application.
 Author: AI Assistant
 """
 
-from PySide6.QtWidgets import QWidget, QLabel, QFrame, QVBoxLayout, QHBoxLayout, QTextEdit, QPushButton
+from PySide6.QtWidgets import QWidget, QLabel, QFrame, QVBoxLayout, QHBoxLayout, QTextEdit, QPushButton, QSizePolicy
 from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve, Property, QRect, Signal
 from PySide6.QtGui import QPainter, QBrush, QColor, QLinearGradient, QPen, QFont, QPainterPath, QPixmap
 
@@ -501,7 +501,7 @@ class ChatBubbleWidget(QWidget):
     
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFixedHeight(80)
+        self.setFixedHeight(95)
         self.setup_ui()
         self.apply_styling()
     
@@ -533,7 +533,7 @@ class ChatBubbleWidget(QWidget):
                 color: #6B7280;
             }
         """)
-        self.command_input.setFixedHeight(35)
+        self.command_input.setFixedHeight(60)
         self.command_input.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         
         # Add text input with stretch to take remaining width
@@ -591,6 +591,8 @@ class ResponseWidget(QWidget):
         # Response text area
         self.response_display = QTextEdit()
         self.response_display.setReadOnly(True)
+        # Ensure horizontal expansion
+        self.response_display.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.MinimumExpanding)
         self.response_display.setStyleSheet("""
             QTextEdit {
                 font-family: -apple-system, BlinkMacSystemFont, sans-serif;
@@ -603,8 +605,11 @@ class ResponseWidget(QWidget):
                 padding: 16px;
             }
         """)
-        self.response_display.setFixedHeight(120)
-        layout.addWidget(self.response_display)
+        # Dynamic height - will be adjusted based on content
+        self.response_display.setMinimumHeight(40)
+        self.response_display.setMaximumHeight(300)  # Reasonable max to prevent huge windows
+        # Ensure response display takes full width
+        layout.addWidget(self.response_display, 1)  # stretch factor 1
     
     def copy_response(self):
         """Copy response text to clipboard"""
@@ -613,9 +618,32 @@ class ResponseWidget(QWidget):
         clipboard.setText(self.response_display.toPlainText())
     
     def show_response(self, text: str):
-        """Show response with text"""
+        """Show response with text and adjust height to fit content"""
         self.response_display.setPlainText(text)
         self.setVisible(True)
+        
+        # Use QTimer to calculate height after the text is properly rendered
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(10, self._adjust_height)
+    
+    def _adjust_height(self):
+        """Adjust the height based on the actual content size"""
+        # Force the document to update its size
+        self.response_display.document().adjustSize()
+        
+        # Get the document height
+        doc = self.response_display.document()
+        doc_height = doc.size().height()
+        
+        # Add padding for the text area (16px * 2 for top/bottom padding)
+        total_height = int(doc_height + 40)  # Increased padding for better appearance
+        
+        # Constrain to reasonable bounds
+        total_height = max(60, min(300, total_height))
+        
+        print(f"📏 Adjusting response height: doc_height={doc_height}, total_height={total_height}")
+        
+        self.response_display.setFixedHeight(total_height)
     
     def hide_response(self):
         """Hide the response widget"""

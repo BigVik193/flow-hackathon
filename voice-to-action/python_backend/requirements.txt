@@ -7,7 +7,10 @@ python-dotenv
 # LangChain and AI
 langchain
 langchain-anthropic
+langchain-core
 langchain-community
+
+# MCP Integration for Bright Data
 langchain-mcp-adapters
 
 # HTTP and async

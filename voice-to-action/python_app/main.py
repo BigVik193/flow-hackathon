@@ -5,15 +5,15 @@ Control Flow - Python Voice Agent
 
 A modern Python replacement for the Swift app with:
 1. Real-time speech recognition using Gladia API
-2. Wake word detection for "Hey Flow" and "Scribe Write"
+2. Wake word detection for "Hey Flow" and "Orange"
 3. PySide6 GUI that matches the Swift app functionality
 4. Integration with the existing backend API
 5. macOS permissions handling
 
 Features:
-- Always listening for wake words "Hey Flow" and "Scribe Write"
+- Always listening for wake words "Hey Flow" and "Orange"
 - "Hey Flow" + command sends to backend for execution
-- "Scribe Write" + text for dictation/text insertion
+- "Orange" + text for dictation/text insertion
 - Professional GUI with status indicators
 - MiniMax AI text-to-speech for agent responses
 - Handles macOS accessibility and microphone permissions
@@ -61,7 +61,7 @@ def main():
     print("✅ Application started successfully")
     print("🎤 Listening for wake words...")
     print("💡 Say 'Hey Flow' + command for voice commands")
-    print("📝 Say 'Scribe Write' + text for dictation")
+    print("🍊 Say 'Orange' + text for dictation")
     
     # Run application
     result = app.exec()

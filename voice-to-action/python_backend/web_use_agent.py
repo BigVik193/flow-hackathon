@@ -135,50 +135,36 @@ Focus on the data, not the process."""
                 await self._initialize_mcp()
             
             if self.mcp_tools:
-                # Use the search_engine tool directly for weather queries
-                search_tool = next((tool for tool in self.mcp_tools if tool.name == "search_engine"), None)
+                # Use proper LangChain agent pattern with MCP tools
+                from langchain.agents import create_tool_calling_agent, AgentExecutor
+                from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
                 
-                if search_tool:
-                    print(f"🔧 Using MCP search_engine tool...")
-                    
-                    # Create search query based on the task instructions
-                    search_query = request.instructions.replace("Check the", "").replace("Provide", "").strip()
-                    if not search_query:
-                        search_query = "current weather information"
-                    print(f"   🔍 Search query: {search_query}")
-                    
-                    # Execute the search tool
-                    search_result = await asyncio.get_event_loop().run_in_executor(
-                        None, lambda: search_tool.invoke({"query": search_query})
-                    )
-                    
-                    print(f"   📊 Search result: {str(search_result)[:200]}...")
-                    
-                    # Now use ChatAnthropic to extract info from search results
-                    extraction_prompt = f"""
-Extract the specific information requested from this search result:
-
-Original request: {request.instructions}
-
-Search result:
-{search_result}
-
-Return only the factual information found. Be concise and direct.
-"""
-                    
-                    messages = [
-                        SystemMessage(content="Extract requested information from search results. Return facts only."),
-                        HumanMessage(content=extraction_prompt)
-                    ]
-                    
-                    response = await asyncio.get_event_loop().run_in_executor(
-                        None, lambda: self.chat_model.invoke(messages)
-                    )
-                    
-                    result_content = response.content
-                else:
-                    print("🔄 search_engine tool not available, using fallback")
-                    result_content = "Unable to access weather search tools"
+                print(f"🔧 Creating agent with {len(self.mcp_tools)} MCP tools...")
+                
+                # Create a prompt template for the agent
+                prompt = ChatPromptTemplate.from_messages([
+                    ("system", self._create_system_prompt()),
+                    ("human", "{input}"),
+                    MessagesPlaceholder(variable_name="agent_scratchpad"),
+                ])
+                
+                # Create agent with MCP tools
+                agent = create_tool_calling_agent(self.chat_model, self.mcp_tools, prompt)
+                agent_executor = AgentExecutor(
+                    agent=agent, 
+                    tools=self.mcp_tools, 
+                    verbose=False,  # Set to True for debugging
+                    max_iterations=3,
+                    early_stopping_method="generate"
+                )
+                
+                # Execute with the agent
+                result = await asyncio.get_event_loop().run_in_executor(
+                    None, lambda: agent_executor.invoke({"input": user_prompt})
+                )
+                
+                result_content = result["output"]
+                print(f"   🤖 Agent execution completed")
                 
             else:
                 # Fallback to regular ChatAnthropic without tools
