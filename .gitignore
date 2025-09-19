@@ -23,9 +23,14 @@ share/python-wheels/
 *.egg
 MANIFEST
 
+face_control_env/
+
+
 # Virtual environments
 .env
 .venv
+voice_control/venv/
+voice-to-action/.venv/
 env/
 venv/
 ENV/
