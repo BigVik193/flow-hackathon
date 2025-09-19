@@ -13,10 +13,10 @@ from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QTextEdit, QPushButton, QLabel, QFrame, QMessageBox, QScrollArea
 )
-from PySide6.QtCore import QTimer, Qt, Signal, QObject, QPropertyAnimation, QEasingCurve
-from PySide6.QtGui import QFont, QColor, QLinearGradient, QPalette
+from PySide6.QtCore import QTimer, Qt, Signal, QObject, QPropertyAnimation, QEasingCurve, QRect, QSize
+from PySide6.QtGui import QFont, QColor, QLinearGradient, QPalette, QPainter, QBrush, QPen, QPixmap
 
-from gui_components import StatusIndicator, ModernCard, ActivityIndicator
+from gui_components import StatusIndicator, ModernCard, ActivityIndicator, ChatBubbleWidget, ResponseWidget
 from voice_recognition import SpeechRecognitionThread
 from backend_service import BackendService
 from macos_integration import MacOSIntegration
@@ -64,18 +64,28 @@ class MainWindow(QMainWindow):
         self.start_speech_recognition()
     
     def setup_ui(self):
-        """Setup clean minimal UI like the reference image"""
-        self.setWindowTitle("Control Flow")
+        """Setup sleek modern UI matching the reference screenshots"""
+        self.setWindowTitle("Flow")
         
-        # Set clean window size like reference
-        self.resize(650, 450)
-        self.setMinimumSize(650, 450)
-        self.setMaximumSize(650, 450)
+        # Set initial compact window size
+        self.compact_height = 150
+        self.expanded_height = 400
+        self.window_width = 580
         
-        # Apply clean window styling with important flag
+        self.resize(self.window_width, self.compact_height)
+        self.setMinimumSize(self.window_width, self.compact_height)
+        self.setMaximumSize(self.window_width, self.expanded_height)
+        
+        # Window resize animation
+        self.resize_animation = QPropertyAnimation(self, b"size")
+        self.resize_animation.setDuration(300)
+        self.resize_animation.setEasingCurve(QEasingCurve.OutCubic)
+        
+        # Apply modern gradient background
         self.setStyleSheet("""
             QMainWindow {
-                background-color: #F5F5F7;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                    stop:0 #E8F4FD, stop:1 #F0F8FF);
             }
         """)
         
@@ -83,10 +93,10 @@ class MainWindow(QMainWindow):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         
-        # Main layout with balanced spacing like reference
+        # Main layout with precise spacing like reference
         layout = QVBoxLayout(central_widget)
-        layout.setSpacing(30)
-        layout.setContentsMargins(40, 50, 40, 40)
+        layout.setSpacing(0)
+        layout.setContentsMargins(20, 30, 20, 30)
         
         # Keep minimal status indicators (hidden but functional)
         self.wake_word_indicator = StatusIndicator(QColor(128, 128, 128))
@@ -94,117 +104,39 @@ class MainWindow(QMainWindow):
         self.backend_indicator = StatusIndicator(QColor(128, 128, 128))
         self.status_label = QLabel()
         
-        # Add top spacing for balance
+        # Chat bubble container - this is the main UI element
+        self.chat_bubble = ChatBubbleWidget()
+        layout.addWidget(self.chat_bubble)
+        
+        # Spacing between chat bubble and response
         layout.addSpacing(20)
         
-        # Activity indicator - centered and prominent
-        activity_container = QHBoxLayout()
-        activity_container.addStretch()
-        self.activity_indicator = ActivityIndicator()
-        self.activity_indicator.set_state("idle")
-        activity_container.addWidget(self.activity_indicator)
-        activity_container.addStretch()
-        layout.addLayout(activity_container)
+        # Response area with copy functionality (initially hidden)
+        self.response_container = ResponseWidget()
+        self.response_container.setVisible(False)
+        layout.addWidget(self.response_container)
         
-        # Spacing after circle
-        layout.addSpacing(30)
+        # Stretch to push everything up
+        layout.addStretch()
         
-        # Input area - clean and spacious like reference
-        self.command_input = QTextEdit()
-        self.command_input.setPlaceholderText("Listening...")
-        self.setup_input_styling()
-        self.command_input.setFixedHeight(90)
-        layout.addWidget(self.command_input)
-        
-        # Spacing between areas
-        layout.addSpacing(25)
-        
-        # Response area - clean white background
-        self.response_display = QTextEdit()
-        self.response_display.setReadOnly(True)
-        self.response_display.setStyleSheet("""
-            QTextEdit {
-                font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-                font-size: 14px;
-                line-height: 1.5;
-                padding: 18px;
-                border: 1px solid #D1D5DB;
-                border-radius: 14px;
-                background-color: #FFFFFF;
-                color: #374151;
-            }
-        """)
-        self.response_display.setFixedHeight(120)
-        layout.addWidget(self.response_display)
-        
-        # Bottom spacing
-        layout.addSpacing(20)
+        # Store references for compatibility
+        self.activity_indicator = self.chat_bubble.activity_indicator
+        self.command_input = self.chat_bubble.command_input
+        self.response_display = self.response_container.response_display
     
     def setup_input_styling(self):
-        """Setup input field styling with animation support"""
-        self.command_input.setStyleSheet("""
-            QTextEdit {
-                font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-                font-size: 16px;
-                font-weight: 400;
-                line-height: 1.4;
-                padding: 18px;
-                border: 2px solid #007AFF;
-                border-radius: 14px;
-                background-color: #FFFFFF;
-                color: #1F2937;
-            }
-            QTextEdit:focus {
-                border-color: #0056D6;
-                background-color: #FEFEFE;
-            }
-        """)
-        
-        # Setup pulse animation
-        self.pulse_animation = QPropertyAnimation(self.command_input, b"styleSheet")
-        self.pulse_animation.setDuration(1000)
-        self.pulse_animation.setLoopCount(-1)
+        """Setup input field styling - now handled by ChatBubbleWidget"""
+        # Input styling is now handled by the ChatBubbleWidget
+        pass
     
     def start_processing_animation(self):
-        """Start pulsing animation for processing state"""
-        if self.pulse_animation:
-            processing_style = """
-                QTextEdit {
-                    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-                    font-size: 16px;
-                    font-weight: 400;
-                    line-height: 1.4;
-                    padding: 20px;
-                    border: 2px solid #007AFF;
-                    border-radius: 16px;
-                    background-color: #F0F8FF;
-                    color: #1F2937;
-                }
-            """
-            
-            normal_style = """
-                QTextEdit {
-                    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-                    font-size: 16px;
-                    font-weight: 400;
-                    line-height: 1.4;
-                    padding: 20px;
-                    border: 2px solid #B3D9FF;
-                    border-radius: 16px;
-                    background-color: #F8FAFF;
-                    color: #1F2937;
-                }
-            """
-            
-            self.pulse_animation.setStartValue(normal_style)
-            self.pulse_animation.setEndValue(processing_style)
-            self.pulse_animation.start()
+        """Start processing animation on the Whisper icon"""
+        self.activity_indicator.set_state("processing")
     
     def stop_processing_animation(self):
-        """Stop pulsing animation and return to normal state"""
-        if self.pulse_animation:
-            self.pulse_animation.stop()
-            self.setup_input_styling()
+        """Stop processing animation"""
+        # Animation state will be updated by activity indicator methods
+        pass
     
     def setup_speech_recognition(self):
         """Setup speech recognition thread"""
@@ -215,6 +147,7 @@ class MainWindow(QMainWindow):
         self.speech_thread.dictation_detected.connect(self.handle_dictation)
         self.speech_thread.status_changed.connect(self.update_status)
         self.speech_thread.error_occurred.connect(self.handle_error)
+        self.speech_thread.user_speaking.connect(self.handle_user_speaking)
     
     def start_speech_recognition(self):
         """Start the speech recognition thread"""
@@ -272,6 +205,15 @@ class MainWindow(QMainWindow):
         # Insert text at current cursor position using macOS APIs
         self.macos_integration.insert_text_at_cursor(text + " ")
     
+    def handle_user_speaking(self, is_speaking: bool):
+        """Handle user speaking state for animation"""
+        if is_speaking:
+            print("🎤 User is speaking")
+            self.activity_indicator.set_state("user_speaking")
+        else:
+            print("🔇 User stopped speaking")
+            self.activity_indicator.set_state("listening")
+    
     def execute_current_command(self):
         """Execute the command in the input field (removed button, keeping for compatibility)"""
         pass
@@ -283,9 +225,8 @@ class MainWindow(QMainWindow):
             
         print(f"🚀 Executing command: {command}")
         
-        # Start processing animation and update activity indicator
+        # Start processing animation
         self.start_processing_animation()
-        self.activity_indicator.set_state("processing")
         
         # Notify speech thread we're processing
         if self.speech_thread:
@@ -329,8 +270,9 @@ class MainWindow(QMainWindow):
             print(f"📝 Extracted message: '{message}'")
             print(f"📝 Status: '{status}', Agent type: '{agent_type}'")
             
-            # Update response display
-            self.response_display.setPlainText(message)
+            # Update response display and expand window
+            self.response_container.show_response(message)
+            self.expand_window()
             print(f"🖥️ Updated response display with: {message}")
             
             # Play audio from backend if available
@@ -340,19 +282,24 @@ class MainWindow(QMainWindow):
                 self._play_audio_from_url(audio_url)
             else:
                 print("⚠️ No audio URL provided by backend")
+                # If no audio, return to listening state immediately
+                QTimer.singleShot(1000, lambda: self.activity_indicator.set_state("listening"))
             
-            # Stop processing animation and show speaking state
+            # Stop processing animation and return to listening (audio will handle green state)
             self.stop_processing_animation()
-            self.activity_indicator.set_state("speaking")
+            self.activity_indicator.set_state("listening")
             
             # Clear command input
             self.command_input.clear()
             
-            # Return to listening state after a delay
-            QTimer.singleShot(2000, lambda: self.activity_indicator.set_state("listening"))
+            # Return to listening state will be handled by audio playback completion
+            # or immediately if no audio is played
             
             # Restore original app focus after delay (wait longer for TTS to finish)
             QTimer.singleShot(3000, self.macos_integration.restore_original_app)
+            
+            # Collapse window back to compact size after longer delay
+            QTimer.singleShot(8000, self.collapse_window)
             
             print(f"✅ Command completed: {message}")
             
@@ -407,10 +354,17 @@ class MainWindow(QMainWindow):
                     pygame.mixer.music.load(temp_file_path)
                     pygame.mixer.music.play()
                     
+                    print("🎵 Audio playback started - setting green animation")
+                    # Set agent speaking animation when audio starts
+                    self.activity_indicator.set_state("agent_speaking")
+                    
                     # Wait for playback to complete
                     while pygame.mixer.music.get_busy():
                         pygame.time.wait(100)
                     
+                    print("🎵 Audio playback completed - returning to blue animation")
+                    # Return to listening state when audio actually completes
+                    self.activity_indicator.set_state("listening")
                     print("✅ Audio playback completed")
                     
                 else:
@@ -487,6 +441,21 @@ class MainWindow(QMainWindow):
                     border-radius: 12px;
                 }
             """)
+    
+    def expand_window(self):
+        """Expand window to show response area"""
+        if self.height() == self.compact_height:
+            self.resize_animation.setStartValue(self.size())
+            self.resize_animation.setEndValue(QSize(self.window_width, self.expanded_height))
+            self.resize_animation.start()
+    
+    def collapse_window(self):
+        """Collapse window back to compact size"""
+        if self.height() == self.expanded_height:
+            self.response_container.hide_response()
+            self.resize_animation.setStartValue(self.size())
+            self.resize_animation.setEndValue(QSize(self.window_width, self.compact_height))
+            self.resize_animation.start()
     
     def handle_error(self, error: str):
         """Handle errors from speech recognition"""

@@ -7,9 +7,9 @@ Modern custom GUI components for the Control Flow application.
 Author: AI Assistant
 """
 
-from PySide6.QtWidgets import QWidget, QLabel, QFrame, QVBoxLayout, QHBoxLayout
-from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve, Property
-from PySide6.QtGui import QPainter, QBrush, QColor, QLinearGradient, QPen
+from PySide6.QtWidgets import QWidget, QLabel, QFrame, QVBoxLayout, QHBoxLayout, QTextEdit, QPushButton
+from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve, Property, QRect, Signal
+from PySide6.QtGui import QPainter, QBrush, QColor, QLinearGradient, QPen, QFont, QPainterPath, QPixmap
 
 
 class ModernStatusIndicator(QWidget):
@@ -374,6 +374,259 @@ class ActivityIndicator(QWidget):
         painter.setBrush(QBrush(highlight))
         painter.drawEllipse(center_x - highlight_radius + 3, center_y - highlight_radius + 3,
                            highlight_radius * 2, highlight_radius * 2)
+
+
+class WhisperIcon(QWidget):
+    """Animated Whisper icon with speech wave animation"""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedSize(40, 40)
+        self._wave_amplitude = 0.0
+        self._wave_phase = 0.0
+        self._base_color = QColor(74, 144, 226)  # Blue as default color
+        self._current_state = "idle"
+        
+        # Wave animation for speaking
+        self.wave_animation = QPropertyAnimation(self, b"wave_phase")
+        self.wave_animation.setDuration(1000)
+        self.wave_animation.setStartValue(0.0)
+        self.wave_animation.setEndValue(360.0)
+        self.wave_animation.setLoopCount(-1)
+        
+        # Amplitude animation
+        self.amplitude_animation = QPropertyAnimation(self, b"wave_amplitude")
+        self.amplitude_animation.setDuration(800)
+        self.amplitude_animation.setEasingCurve(QEasingCurve.InOutSine)
+    
+    @Property(float)
+    def wave_phase(self):
+        return self._wave_phase
+    
+    @wave_phase.setter
+    def wave_phase(self, value):
+        self._wave_phase = value
+        self.update()
+    
+    @Property(float)
+    def wave_amplitude(self):
+        return self._wave_amplitude
+    
+    @wave_amplitude.setter
+    def wave_amplitude(self, value):
+        self._wave_amplitude = value
+        self.update()
+    
+    def set_state(self, state: str):
+        """Set animation state (idle, listening, speaking, processing, user_speaking, agent_speaking)"""
+        self._current_state = state
+        self.wave_animation.stop()
+        self.amplitude_animation.stop()
+        
+        if state == "user_speaking":
+            # Blue with strong animation for user speaking
+            self._base_color = QColor(74, 144, 226)  # Blue
+            self.amplitude_animation.setStartValue(0.0)
+            self.amplitude_animation.setEndValue(1.0)
+            self.amplitude_animation.start()
+            self.wave_animation.start()
+        elif state == "agent_speaking":
+            # Green with strong animation for agent speaking
+            self._base_color = QColor(34, 197, 94)  # Green
+            self.amplitude_animation.setStartValue(0.0)
+            self.amplitude_animation.setEndValue(1.0)
+            self.amplitude_animation.start()
+            self.wave_animation.start()
+        elif state == "listening":
+            # Blue with gentle animation for listening
+            self._base_color = QColor(74, 144, 226)  # Blue
+            self.amplitude_animation.setStartValue(self._wave_amplitude)
+            self.amplitude_animation.setEndValue(0.3)
+            self.amplitude_animation.start()
+        elif state == "processing":
+            # Blue with moderate animation for processing
+            self._base_color = QColor(74, 144, 226)  # Blue
+            self.amplitude_animation.setStartValue(self._wave_amplitude)
+            self.amplitude_animation.setEndValue(0.5)
+            self.amplitude_animation.start()
+        else:  # idle
+            # Blue but minimal animation
+            self._base_color = QColor(74, 144, 226)  # Blue
+            self.amplitude_animation.setStartValue(self._wave_amplitude)
+            self.amplitude_animation.setEndValue(0.0)
+            self.amplitude_animation.start()
+    
+    def paintEvent(self, event):
+        """Custom paint event for the Whisper icon"""
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        
+        center_x, center_y = 20, 20
+        base_radius = 14
+        
+        # Draw animated waves when speaking
+        if self._wave_amplitude > 0:
+            for i in range(3):
+                wave_radius = base_radius + (i + 1) * 8 * self._wave_amplitude
+                alpha = int(100 * self._wave_amplitude * (1 - i * 0.3))
+                wave_color = QColor(self._base_color)
+                wave_color.setAlpha(alpha)
+                
+                painter.setBrush(Qt.NoBrush)
+                pen = QPen(wave_color, 2)
+                painter.setPen(pen)
+                painter.drawEllipse(center_x - wave_radius, center_y - wave_radius,
+                                   wave_radius * 2, wave_radius * 2)
+        
+        # Draw main icon circle
+        gradient = QLinearGradient(0, 0, 40, 40)
+        gradient.setColorAt(0, self._base_color.lighter(120))
+        gradient.setColorAt(1, self._base_color.darker(110))
+        
+        painter.setBrush(QBrush(gradient))
+        painter.setPen(Qt.NoPen)
+        painter.drawEllipse(center_x - base_radius, center_y - base_radius,
+                           base_radius * 2, base_radius * 2)
+        
+        # Add white highlight
+        highlight = QColor(255, 255, 255, 120)
+        painter.setBrush(QBrush(highlight))
+        highlight_radius = base_radius - 3
+        painter.drawEllipse(center_x - highlight_radius + 2, center_y - highlight_radius + 2,
+                           highlight_radius * 2, highlight_radius * 2)
+
+
+class ChatBubbleWidget(QWidget):
+    """Main chat bubble widget matching the reference design"""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedHeight(80)
+        self.setup_ui()
+        self.apply_styling()
+    
+    def setup_ui(self):
+        """Setup the chat bubble layout"""
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(20, 10, 20, 10)
+        layout.setSpacing(15)
+        
+        # Whisper icon
+        self.activity_indicator = WhisperIcon()
+        layout.addWidget(self.activity_indicator)
+        
+        # Text content
+        text_layout = QVBoxLayout()
+        text_layout.setSpacing(5)
+        
+        # No app label - keeping interface minimal
+        
+        # Command input (functional with original placeholder)
+        self.command_input = QTextEdit()
+        self.command_input.setPlaceholderText("Listening...")
+        self.command_input.setStyleSheet("""
+            QTextEdit {
+                font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+                font-size: 14px;
+                font-weight: 400;
+                color: #1F2937;
+                background: transparent;
+                border: none;
+                padding: 5px 0px;
+                margin: 0;
+            }
+            QTextEdit::placeholder {
+                color: #6B7280;
+            }
+        """)
+        self.command_input.setFixedHeight(35)
+        self.command_input.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        text_layout.addWidget(self.command_input)
+        
+        layout.addLayout(text_layout)
+        layout.addStretch()
+    
+    def apply_styling(self):
+        """Apply chat bubble styling"""
+        self.setStyleSheet("""
+            ChatBubbleWidget {
+                background-color: #FFFFFF;
+                border: 1px solid #E5E7EB;
+                border-radius: 20px;
+            }
+        """)
+    
+    def paintEvent(self, event):
+        """Custom paint event for rounded bubble with shadow"""
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        
+        # Draw shadow
+        shadow_rect = QRect(2, 2, self.width() - 4, self.height() - 4)
+        shadow_color = QColor(0, 0, 0, 20)
+        painter.setBrush(QBrush(shadow_color))
+        painter.setPen(Qt.NoPen)
+        painter.drawRoundedRect(shadow_rect, 20, 20)
+        
+        # Draw main bubble
+        main_rect = QRect(0, 0, self.width() - 2, self.height() - 2)
+        gradient = QLinearGradient(0, 0, 0, self.height())
+        gradient.setColorAt(0, QColor(255, 255, 255))
+        gradient.setColorAt(1, QColor(248, 250, 252))
+        
+        painter.setBrush(QBrush(gradient))
+        painter.setPen(QPen(QColor(229, 231, 235), 1))
+        painter.drawRoundedRect(main_rect, 20, 20)
+
+
+class ResponseWidget(QWidget):
+    """Response area with copy functionality"""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setup_ui()
+        self.setVisible(False)  # Hidden by default
+    
+    def setup_ui(self):
+        """Setup the response widget layout"""
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(8)
+        
+        # No header - keeping it clean
+        
+        # Response text area
+        self.response_display = QTextEdit()
+        self.response_display.setReadOnly(True)
+        self.response_display.setStyleSheet("""
+            QTextEdit {
+                font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+                font-size: 14px;
+                line-height: 1.5;
+                color: #374151;
+                background-color: #F9FAFB;
+                border: 1px solid #E5E7EB;
+                border-radius: 16px;
+                padding: 16px;
+            }
+        """)
+        self.response_display.setFixedHeight(120)
+        layout.addWidget(self.response_display)
+    
+    def copy_response(self):
+        """Copy response text to clipboard"""
+        from PySide6.QtWidgets import QApplication
+        clipboard = QApplication.clipboard()
+        clipboard.setText(self.response_display.toPlainText())
+    
+    def show_response(self, text: str):
+        """Show response with text"""
+        self.response_display.setPlainText(text)
+        self.setVisible(True)
+    
+    def hide_response(self):
+        """Hide the response widget"""
+        self.setVisible(False)
 
 
 # Keep original StatusIndicator for compatibility

@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__context7__resolve-library-id",
+      "WebSearch",
+      "Bash(swift build:*)",
+      "mcp__context7__get-library-docs",
+      "Bash(xcrun xcodebuild:*)",
+      "Bash(plutil:*)",
+      "Bash(codesign:*)",
+      "Bash(sudo sqlite3:*)",
+      "Bash(./run.sh)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

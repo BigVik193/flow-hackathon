@@ -22,22 +22,29 @@ class BackendService:
         """Send command to backend API"""
         try:
             payload = {
-                "command": command,
-                "session_id": session_id
+                "message": command
             }
             
             print(f"🚀 Sending to backend: {command}")
             
             response = requests.post(
-                f"{self.backend_url}/execute",
+                f"{self.backend_url}/message",
                 json=payload,
                 timeout=180
             )
             
             if response.status_code == 200:
                 result = response.json()
-                print(f"✅ Backend response: {result.get('message', '')}")
-                return result
+                print(f"✅ Backend response: {result.get('response', '')}")
+                # Convert backend response format to frontend expected format
+                return {
+                    "status": result.get("status", "success"),
+                    "message": result.get("response", ""),
+                    "agent_type": "conversation",
+                    "execution_time": result.get("execution_time", 0.0),
+                    "timestamp": result.get("timestamp", datetime.now().isoformat()),
+                    "audio_url": result.get("audio_url")
+                }
             else:
                 error_msg = f"Backend error: HTTP {response.status_code}"
                 print(f"❌ {error_msg}")

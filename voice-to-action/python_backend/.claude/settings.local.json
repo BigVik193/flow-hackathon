@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs",
+      "WebSearch",
+      "WebFetch(domain:docs.langchain.com)",
+      "Bash(./start_optimized_server.sh:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

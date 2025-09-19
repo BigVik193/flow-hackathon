@@ -1,0 +1,14 @@
+# A2A Flow Dependencies
+fastapi
+uvicorn
+pydantic
+python-dotenv
+
+# LangChain and AI
+langchain
+langchain-anthropic
+langchain-mcp-adapters
+
+# HTTP and async
+aiohttp
+requests

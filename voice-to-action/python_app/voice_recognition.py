@@ -38,6 +38,7 @@ class SpeechRecognitionThread(QThread):
     dictation_detected = Signal(str)  # Text after "Scribe Write"
     status_changed = Signal(str)  # Status updates
     error_occurred = Signal(str)  # Error messages
+    user_speaking = Signal(bool)  # True when user is speaking, False when silent
     
     def __init__(self):
         super().__init__()
