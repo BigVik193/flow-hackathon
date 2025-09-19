@@ -298,8 +298,10 @@ class MainWindow(QMainWindow):
             # Restore original app focus after delay (wait longer for TTS to finish)
             QTimer.singleShot(3000, self.macos_integration.restore_original_app)
             
-            # Collapse window back to compact size after longer delay
-            QTimer.singleShot(8000, self.collapse_window)
+            # Window collapse will be handled after audio completion
+            # or immediately if no audio is played
+            if not audio_url:
+                QTimer.singleShot(8000, self.collapse_window)
             
             print(f"✅ Command completed: {message}")
             
@@ -354,17 +356,28 @@ class MainWindow(QMainWindow):
                     pygame.mixer.music.load(temp_file_path)
                     pygame.mixer.music.play()
                     
-                    print("🎵 Audio playback started - setting green animation")
+                    print("🎵 Audio playback started - setting green animation and disabling speech recognition")
                     # Set agent speaking animation when audio starts
                     self.activity_indicator.set_state("agent_speaking")
+                    
+                    # Disable speech recognition while agent is speaking
+                    if self.speech_thread:
+                        self.speech_thread.set_backend_processing(True)
                     
                     # Wait for playback to complete
                     while pygame.mixer.music.get_busy():
                         pygame.time.wait(100)
                     
-                    print("🎵 Audio playback completed - returning to blue animation")
+                    print("🎵 Audio playback completed - returning to blue animation and re-enabling speech recognition")
                     # Return to listening state when audio actually completes
                     self.activity_indicator.set_state("listening")
+                    
+                    # Re-enable speech recognition after agent finishes speaking
+                    if self.speech_thread:
+                        self.speech_thread.set_backend_processing(False)
+                    
+                    # Schedule window collapse 10 seconds after audio completes
+                    QTimer.singleShot(10000, self.collapse_window)
                     print("✅ Audio playback completed")
                     
                 else:

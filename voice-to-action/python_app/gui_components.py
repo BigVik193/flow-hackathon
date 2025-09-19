@@ -515,13 +515,7 @@ class ChatBubbleWidget(QWidget):
         self.activity_indicator = WhisperIcon()
         layout.addWidget(self.activity_indicator)
         
-        # Text content
-        text_layout = QVBoxLayout()
-        text_layout.setSpacing(5)
-        
-        # No app label - keeping interface minimal
-        
-        # Command input (functional with original placeholder)
+        # Command input (takes up remaining width)
         self.command_input = QTextEdit()
         self.command_input.setPlaceholderText("Listening...")
         self.command_input.setStyleSheet("""
@@ -541,10 +535,9 @@ class ChatBubbleWidget(QWidget):
         """)
         self.command_input.setFixedHeight(35)
         self.command_input.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        text_layout.addWidget(self.command_input)
         
-        layout.addLayout(text_layout)
-        layout.addStretch()
+        # Add text input with stretch to take remaining width
+        layout.addWidget(self.command_input, 1)  # stretch factor of 1
     
     def apply_styling(self):
         """Apply chat bubble styling"""

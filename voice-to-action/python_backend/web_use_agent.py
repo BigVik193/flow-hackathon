@@ -135,35 +135,50 @@ Focus on the data, not the process."""
                 await self._initialize_mcp()
             
             if self.mcp_tools:
-                # Use ChatAnthropic with MCP tools
-                chat_with_tools = self.chat_model.bind_tools(self.mcp_tools)
+                # Use the search_engine tool directly for weather queries
+                search_tool = next((tool for tool in self.mcp_tools if tool.name == "search_engine"), None)
                 
-                # Create messages for the web agent
-                messages = [
-                    SystemMessage(content=self._create_system_prompt()),
-                    HumanMessage(content=user_prompt)
-                ]
-                
-                # Execute with MCP tools
-                response = await asyncio.get_event_loop().run_in_executor(
-                    None, lambda: chat_with_tools.invoke(messages)
-                )
-                
-                # Handle tool calls if present
-                if hasattr(response, 'tool_calls') and response.tool_calls:
-                    print(f"🔧 Executing {len(response.tool_calls)} MCP tool calls...")
+                if search_tool:
+                    print(f"🔧 Using MCP search_engine tool...")
                     
-                    # Execute tool calls through MCP client
-                    for tool_call in response.tool_calls:
-                        tool_name = tool_call['name']
-                        tool_args = tool_call['args']
-                        print(f"   🔨 Calling {tool_name} with args: {tool_args}")
-                        
-                        # Execute the tool through MCP client
-                        tool_result = await self.mcp_client.call_tool(tool_name, tool_args)
-                        print(f"   ✅ Tool {tool_name} result: {str(tool_result)[:100]}...")
-                
-                result_content = response.content
+                    # Create search query based on the task instructions
+                    search_query = request.instructions.replace("Check the", "").replace("Provide", "").strip()
+                    if not search_query:
+                        search_query = "current weather information"
+                    print(f"   🔍 Search query: {search_query}")
+                    
+                    # Execute the search tool
+                    search_result = await asyncio.get_event_loop().run_in_executor(
+                        None, lambda: search_tool.invoke({"query": search_query})
+                    )
+                    
+                    print(f"   📊 Search result: {str(search_result)[:200]}...")
+                    
+                    # Now use ChatAnthropic to extract info from search results
+                    extraction_prompt = f"""
+Extract the specific information requested from this search result:
+
+Original request: {request.instructions}
+
+Search result:
+{search_result}
+
+Return only the factual information found. Be concise and direct.
+"""
+                    
+                    messages = [
+                        SystemMessage(content="Extract requested information from search results. Return facts only."),
+                        HumanMessage(content=extraction_prompt)
+                    ]
+                    
+                    response = await asyncio.get_event_loop().run_in_executor(
+                        None, lambda: self.chat_model.invoke(messages)
+                    )
+                    
+                    result_content = response.content
+                else:
+                    print("🔄 search_engine tool not available, using fallback")
+                    result_content = "Unable to access weather search tools"
                 
             else:
                 # Fallback to regular ChatAnthropic without tools
