@@ -593,6 +593,8 @@ class ResponseWidget(QWidget):
         self.response_display.setReadOnly(True)
         # Ensure horizontal expansion
         self.response_display.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.MinimumExpanding)
+        # Ensure word wrap uses the full widget width
+        self.response_display.setLineWrapMode(QTextEdit.WidgetWidth)
         self.response_display.setStyleSheet("""
             QTextEdit {
                 font-family: -apple-system, BlinkMacSystemFont, sans-serif;
@@ -603,12 +605,24 @@ class ResponseWidget(QWidget):
                 border: 1px solid #E5E7EB;
                 border-radius: 16px;
                 padding: 16px;
+                width: 100%;
+                max-width: none;
             }
         """)
         # Dynamic height - will be adjusted based on content
         self.response_display.setMinimumHeight(40)
         self.response_display.setMaximumHeight(300)  # Reasonable max to prevent huge windows
-        # Ensure response display takes full width
+        # Ensure response display takes full width by setting minimum width
+        self.response_display.setMinimumWidth(540)
+        
+        # Force the document to use full width after the widget is added
+        def setup_text_width():
+            doc = self.response_display.document()
+            doc.setTextWidth(540 - 32)  # Use minimum width minus padding initially
+        
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(1, setup_text_width)
+        
         layout.addWidget(self.response_display, 1)  # stretch factor 1
     
     def copy_response(self):
@@ -619,8 +633,15 @@ class ResponseWidget(QWidget):
     
     def show_response(self, text: str):
         """Show response with text and adjust height to fit content"""
+        # Stop loading animation if it's running
+        self._stop_loading_animation()
+        
         self.response_display.setPlainText(text)
         self.setVisible(True)
+        
+        # Force the document to use the full widget width
+        doc = self.response_display.document()
+        doc.setTextWidth(self.response_display.width() - 32)  # Account for padding
         
         # Use QTimer to calculate height after the text is properly rendered
         from PySide6.QtCore import QTimer
@@ -648,6 +669,50 @@ class ResponseWidget(QWidget):
     def hide_response(self):
         """Hide the response widget"""
         self.setVisible(False)
+    
+    def show_loading(self):
+        """Show loading animation with dots"""
+        self.response_display.setPlainText("...")
+        self.setVisible(True)
+        
+        # Force the document to use the full widget width
+        doc = self.response_display.document()
+        doc.setTextWidth(self.response_display.width() - 32)  # Account for padding
+        
+        # Set a minimal height for loading state
+        self.response_display.setFixedHeight(60)
+        
+        # Start the dots animation
+        self._start_loading_animation()
+    
+    def _start_loading_animation(self):
+        """Start the animated dots loading effect"""
+        if not hasattr(self, '_loading_timer'):
+            from PySide6.QtCore import QTimer
+            self._loading_timer = QTimer()
+            self._loading_timer.timeout.connect(self._update_loading_dots)
+            self._loading_state = 0
+        
+        self._loading_timer.start(500)  # Update every 500ms
+    
+    def _update_loading_dots(self):
+        """Update the loading dots animation"""
+        dots = [".", "..", "...", ""]
+        self._loading_state = (self._loading_state + 1) % len(dots)
+        self.response_display.setPlainText(dots[self._loading_state])
+    
+    def _stop_loading_animation(self):
+        """Stop the loading animation"""
+        if hasattr(self, '_loading_timer'):
+            self._loading_timer.stop()
+    
+    def resizeEvent(self, event):
+        """Handle widget resize to update text width"""
+        super().resizeEvent(event)
+        if hasattr(self, 'response_display'):
+            # Update document width when widget is resized
+            doc = self.response_display.document()
+            doc.setTextWidth(self.response_display.width() - 32)  # Account for padding
 
 
 # Keep original StatusIndicator for compatibility

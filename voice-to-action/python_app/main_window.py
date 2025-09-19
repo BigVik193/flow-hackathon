@@ -228,6 +228,10 @@ class MainWindow(QMainWindow):
         # Start processing animation
         self.start_processing_animation()
         
+        # Show loading animation in response area
+        self.response_container.show_loading()
+        self.expand_window()
+        
         # Notify speech thread we're processing
         if self.speech_thread:
             self.speech_thread.set_backend_processing(True)
