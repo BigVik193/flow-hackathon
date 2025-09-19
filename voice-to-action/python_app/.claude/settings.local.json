@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs",
+      "Bash(source:*)",
+      "Bash(pip install:*)",
+      "Bash(python:*)",
+      "Read(//Users/Vikram/Desktop/flow-hackathon/voice-to-action/python_backend/**)",
+      "Bash(./run.sh)",
+      "Read(//var/folders/02/6s1110s14jd_1zzdq4y119h80000gn/T/TemporaryItems/NSIRD_screencaptureui_hEIwkC/**)",
+      "Read(//var/folders/02/6s1110s14jd_1zzdq4y119h80000gn/T/TemporaryItems/NSIRD_screencaptureui_p4hWep/**)",
+      "Read(//var/folders/02/6s1110s14jd_1zzdq4y119h80000gn/T/TemporaryItems/NSIRD_screencaptureui_cKk88c/**)"
+    ]
+  }
+}
