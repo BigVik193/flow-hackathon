@@ -31,12 +31,13 @@ class A2AOrchestrator:
         
         print("✅ A2A Orchestrator initialized with all agents")
     
-    async def process_message(self, user_message: str) -> A2AFlowResult:
+    async def process_message(self, user_message: str, conversation_history: Optional[list] = None) -> A2AFlowResult:
         """
         Process a user message through the complete A2A flow
         
         Args:
             user_message: The user's input message
+            conversation_history: Optional list of previous messages for context
             
         Returns:
             A2AFlowResult: Complete result of the A2A flow
@@ -51,7 +52,7 @@ class A2AOrchestrator:
         try:
             # Step 1: Route the request
             print("\n📍 Step 1: Routing request...")
-            routing_decision = await self.router_agent.route_request(user_message)
+            routing_decision = await self.router_agent.route_request(user_message, conversation_history)
             
             if routing_decision.decision_type == "final_response":
                 # Direct response - no task execution needed
@@ -81,7 +82,7 @@ class A2AOrchestrator:
                 # Step 3: Synthesize final response
                 print("\n🎯 Step 3: Synthesizing final response...")
                 final_response = await self.final_answer_agent.create_final_response(
-                    user_message, task_summary
+                    user_message, task_summary, conversation_history
                 )
                 
                 total_time = time.time() - flow_start_time
@@ -114,22 +115,23 @@ class A2AOrchestrator:
                 timestamp=datetime.now()
             )
     
-    def process_message_sync(self, user_message: str) -> A2AFlowResult:
+    def process_message_sync(self, user_message: str, conversation_history: Optional[list] = None) -> A2AFlowResult:
         """
         Synchronous wrapper for process_message
         
         Args:
             user_message: The user's input message
+            conversation_history: Optional list of previous messages for context
             
         Returns:
             A2AFlowResult: Complete result of the A2A flow
         """
         try:
             loop = asyncio.get_event_loop()
-            return loop.run_until_complete(self.process_message(user_message))
+            return loop.run_until_complete(self.process_message(user_message, conversation_history))
         except RuntimeError:
             # No event loop running, create new one
-            return asyncio.run(self.process_message(user_message))
+            return asyncio.run(self.process_message(user_message, conversation_history))
     
     async def health_check(self) -> dict:
         """

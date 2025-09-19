@@ -146,7 +146,7 @@ async def process_message(user_message: str) -> str:
         # Try A2A flow first if orchestrator is available
         if a2a_orchestrator:
             print("🎯 Processing with A2A Flow...")
-            a2a_result = await a2a_orchestrator.process_message(user_message)
+            a2a_result = await a2a_orchestrator.process_message(user_message, conversation_history.messages)
             response_content = a2a_result.final_response
             
             # Add A2A response to conversation history

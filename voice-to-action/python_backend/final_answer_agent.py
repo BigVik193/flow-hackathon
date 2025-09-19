@@ -60,7 +60,8 @@ Don't say "I checked" or "I found" - just present the information directly."""
     async def create_final_response(
         self, 
         user_request: str, 
-        task_summary: TaskExecutionSummary
+        task_summary: TaskExecutionSummary,
+        conversation_history: Optional[list] = None
     ) -> FinalAgentResponse:
         """
         Create a final synthesized response from task execution results
@@ -68,6 +69,7 @@ Don't say "I checked" or "I found" - just present the information directly."""
         Args:
             user_request: The original user request
             task_summary: Summary of all executed tasks and their results
+            conversation_history: Optional list of previous messages for context
             
         Returns:
             FinalAgentResponse: Synthesized final response
@@ -99,9 +101,15 @@ Extract the actual information from the successful task results and present it n
             
             # Create messages for the final answer agent
             messages = [
-                SystemMessage(content=self._create_system_prompt()),
-                HumanMessage(content=user_prompt)
+                SystemMessage(content=self._create_system_prompt())
             ]
+            
+            # Add conversation history if provided
+            if conversation_history:
+                messages.extend(conversation_history)
+            
+            # Add current prompt
+            messages.append(HumanMessage(content=user_prompt))
             
             # Generate the final response
             response = await asyncio.get_event_loop().run_in_executor(
@@ -161,7 +169,8 @@ Task {i} ({result.task_type.value}): {status}
     def create_final_response_sync(
         self, 
         user_request: str, 
-        task_summary: TaskExecutionSummary
+        task_summary: TaskExecutionSummary,
+        conversation_history: Optional[list] = None
     ) -> FinalAgentResponse:
         """
         Synchronous wrapper for create_final_response
@@ -169,16 +178,17 @@ Task {i} ({result.task_type.value}): {status}
         Args:
             user_request: The original user request
             task_summary: Summary of all executed tasks and their results
+            conversation_history: Optional list of previous messages for context
             
         Returns:
             FinalAgentResponse: Synthesized final response
         """
         try:
             loop = asyncio.get_event_loop()
-            return loop.run_until_complete(self.create_final_response(user_request, task_summary))
+            return loop.run_until_complete(self.create_final_response(user_request, task_summary, conversation_history))
         except RuntimeError:
             # No event loop running, create new one
-            return asyncio.run(self.create_final_response(user_request, task_summary))
+            return asyncio.run(self.create_final_response(user_request, task_summary, conversation_history))
 
 
 # Test the final answer agent

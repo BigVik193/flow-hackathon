@@ -66,12 +66,13 @@ Examples:
 
 Be specific in task instructions."""
 
-    async def route_request(self, user_message: str) -> RouterDecision:
+    async def route_request(self, user_message: str, conversation_history: Optional[list] = None) -> RouterDecision:
         """
         Analyze user request and return routing decision
         
         Args:
             user_message: The user's input message
+            conversation_history: Optional list of previous messages for context
             
         Returns:
             RouterDecision: Decision on how to handle the request
@@ -84,9 +85,15 @@ Be specific in task instructions."""
             
             # Create messages for the router
             messages = [
-                SystemMessage(content=self._create_system_prompt()),
-                HumanMessage(content=f"User request: {user_message}")
+                SystemMessage(content=self._create_system_prompt())
             ]
+            
+            # Add conversation history if provided
+            if conversation_history:
+                messages.extend(conversation_history)
+            
+            # Add current user message
+            messages.append(HumanMessage(content=f"User request: {user_message}"))
             
             print(f"📤 Router Agent INPUT: {user_message}")
             
@@ -122,22 +129,23 @@ Be specific in task instructions."""
             )
             return fallback_response
     
-    def route_request_sync(self, user_message: str) -> RouterDecision:
+    def route_request_sync(self, user_message: str, conversation_history: Optional[list] = None) -> RouterDecision:
         """
         Synchronous wrapper for route_request
         
         Args:
             user_message: The user's input message
+            conversation_history: Optional list of previous messages for context
             
         Returns:
             RouterDecision: Decision on how to handle the request
         """
         try:
             loop = asyncio.get_event_loop()
-            return loop.run_until_complete(self.route_request(user_message))
+            return loop.run_until_complete(self.route_request(user_message, conversation_history))
         except RuntimeError:
             # No event loop running, create new one
-            return asyncio.run(self.route_request(user_message))
+            return asyncio.run(self.route_request(user_message, conversation_history))
 
 
 # Test the router agent

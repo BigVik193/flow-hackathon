@@ -5,7 +5,9 @@
       "mcp__context7__get-library-docs",
       "WebSearch",
       "WebFetch(domain:docs.langchain.com)",
-      "Bash(./start_optimized_server.sh:*)"
+      "Bash(./start_optimized_server.sh:*)",
+      "WebFetch(domain:blog.williamchong.cloud)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": []
