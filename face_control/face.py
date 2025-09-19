@@ -56,7 +56,7 @@ class UnifiedFaceController:
         
         # Wide eyes calibration for gestures
         self.baseline_ear = None
-        self.wide_eyes_multiplier = 1.4
+        self.wide_eyes_multiplier = 1.25
         self.wide_eyes_calibration_frames = 0
         self.wide_eyes_calibration_needed = 30
         
@@ -245,7 +245,7 @@ class UnifiedFaceController:
         threshold = self.baseline_ear * self.wide_eyes_multiplier
         eyes_ratio = avg_ear / self.baseline_ear if self.baseline_ear > 0 else 0
         
-        if avg_ear > threshold and eyes_ratio > 1.4:
+        if avg_ear > threshold and eyes_ratio > 1.25:
             self.last_wide_eyes_time = current_time
             print(f"👀 WIDE EYES! Switching applications")
             return "wide_eyes"
@@ -289,8 +289,8 @@ class UnifiedFaceController:
         right_ear = self.calculate_eye_aspect_ratio(right_eye_points)
         
         # More lenient thresholds for better detection
-        wink_threshold = 0.3
-        ear_difference_threshold = 0.1
+        wink_threshold = 0.28
+        ear_difference_threshold = 0.12
         
         # Left wink = toggle mode (works in both modes)
         if (left_ear < wink_threshold and right_ear > wink_threshold + ear_difference_threshold and
